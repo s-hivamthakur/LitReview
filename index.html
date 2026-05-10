@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LitReview AI — Automated Literature Review System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root {
+    --bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c27;
+    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+    --accent:#7c6af7;--accent2:#a78bfa;--accent-glow:rgba(124,106,247,0.18);
+    --text:#e8e8f0;--text-muted:#7a7a8e;--text-dim:#4a4a5e;
+    --green:#34d399;--red:#f87171;--amber:#fbbf24;
+    --font-display:'DM Serif Display',serif;
+    --font-body:'Outfit',sans-serif;
+    --font-mono:'DM Mono',monospace;
+    --radius:12px;--radius-lg:18px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.7;min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(124,106,247,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(124,106,247,0.03) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+  .orb{position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;opacity:.35}
+  .orb-1{width:500px;height:500px;background:radial-gradient(circle,#5b4fcf,transparent 70%);top:-150px;left:-100px}
+  .orb-2{width:400px;height:400px;background:radial-gradient(circle,#1e1b4b,transparent 70%);bottom:0;right:-100px}
+  .container{max-width:900px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+  header{padding:52px 0 40px;text-align:center}
+  .logo-badge{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border2);border-radius:50px;padding:6px 16px;font-size:12px;font-weight:500;color:var(--accent2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px}
+  .logo-badge .dot{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:pulse 2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+  h1{font-family:var(--font-display);font-size:clamp(36px,6vw,58px);font-weight:400;line-height:1.1;letter-spacing:-.02em;color:#fff;margin-bottom:14px}
+  h1 em{font-style:italic;color:var(--accent2)}
+  .subtitle{color:var(--text-muted);font-size:15px;font-weight:300;max-width:480px;margin:0 auto}
+  .search-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:28px;margin:32px 0 24px;position:relative;overflow:hidden}
+  .search-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.6}
+  .field-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+  .groq-notice{background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.2);border-radius:var(--radius);padding:14px 16px;font-size:13px;color:var(--green);margin-bottom:18px;line-height:1.7}
+  .groq-notice a{color:var(--green);font-weight:600}
+  .api-key-row{display:flex;gap:10px;margin-bottom:18px;align-items:center}
+  .api-key-input{flex:1;background:var(--bg);border:1px solid rgba(52,211,153,.3);border-radius:var(--radius);padding:11px 14px;font-family:var(--font-mono);font-size:13px;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s}
+  .api-key-input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(52,211,153,.12)}
+  .api-key-input.valid{border-color:var(--green)}.api-key-input.invalid{border-color:var(--red)}
+  .key-status{font-size:12px;white-space:nowrap;min-width:80px}
+  .key-status.valid{color:var(--green)}.key-status.invalid{color:var(--red)}
+  .search-row{display:flex;gap:10px;margin-bottom:18px}
+  .search-input{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 16px;font-family:var(--font-body);font-size:15px;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s}
+  .search-input::placeholder{color:var(--text-dim)}
+  .search-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+  .options-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
+  .option-group{display:flex;flex-direction:column;gap:8px}
+  select{background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 14px;font-family:var(--font-body);font-size:14px;color:var(--text);outline:none;transition:border-color .2s;appearance:none;cursor:pointer}
+  select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+  .btn-primary{width:100%;background:linear-gradient(135deg,var(--accent),#5b4fcf);border:none;border-radius:var(--radius);padding:14px 24px;font-family:var(--font-body);font-size:15px;font-weight:600;color:#fff;cursor:pointer;transition:opacity .2s,transform .15s,box-shadow .2s;letter-spacing:.02em;box-shadow:0 4px 20px rgba(124,106,247,.3)}
+  .btn-primary:hover:not(:disabled){opacity:.9;transform:translateY(-1px);box-shadow:0 6px 28px rgba(124,106,247,.4)}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+  .progress-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:28px;margin-bottom:24px;display:none}
+  .progress-card.visible{display:block}
+  .progress-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .spinner{width:20px;height:20px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .progress-title{font-weight:600;font-size:15px}
+  .progress-steps{display:flex;flex-direction:column;gap:8px}
+  .step-item{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted);transition:color .3s}
+  .step-item.active{color:var(--text)}.step-item.done{color:var(--green)}
+  .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .3s}
+  .step-item.active .step-dot{background:var(--accent);animation:pulse 1s ease-in-out infinite}
+  .step-item.done .step-dot{background:var(--green)}
+  .results-section{display:none;margin-bottom:60px}
+  .results-section.visible{display:block}
+  .results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+  .results-title{font-family:var(--font-display);font-size:22px;color:#fff}
+  .export-btns{display:flex;gap:8px;flex-wrap:wrap}
+  .btn-export{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 16px;font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--text);cursor:pointer;transition:background .2s,border-color .2s;display:flex;align-items:center;gap:7px}
+  .btn-export:hover{background:var(--surface);border-color:var(--accent);color:var(--accent2)}
+  .btn-export.pdf-btn:hover{border-color:var(--amber);color:var(--amber)}
+  .section-label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+  .papers-grid{display:grid;gap:12px;margin-bottom:28px}
+  .paper-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;transition:border-color .2s,background .2s}
+  .paper-card:hover{border-color:var(--border2);background:var(--surface2)}
+  .paper-title{font-weight:500;font-size:14px;color:var(--text);margin-bottom:5px;line-height:1.4}
+  .paper-meta{font-size:12px;color:var(--text-dim);font-family:var(--font-mono);display:flex;gap:14px;flex-wrap:wrap}
+  .tag{display:inline-block;background:var(--accent-glow);border:1px solid rgba(124,106,247,.2);border-radius:4px;padding:2px 8px;font-size:11px;color:var(--accent2);font-family:var(--font-mono)}
+
+  /* Abstract viewer */
+  .paper-card{cursor:pointer}
+  .paper-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .paper-card-top .paper-title{margin-bottom:0;flex:1}
+  .expand-icon{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--accent-glow);border:1px solid rgba(124,106,247,.25);display:flex;align-items:center;justify-content:center;margin-top:1px;transition:background .2s}
+  .expand-icon svg{width:10px;height:10px;stroke:var(--accent2);transition:transform .25s}
+  .paper-card.open .expand-icon svg{transform:rotate(180deg)}
+  .paper-card.open{border-color:rgba(124,106,247,.4);background:var(--surface2)}
+  .abstract-panel{max-height:0;overflow:hidden;transition:max-height .4s ease,opacity .3s ease;opacity:0}
+  .abstract-panel.open{max-height:600px;opacity:1}
+  .abstract-body{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+  .abstract-sublabel{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:7px}
+  .abstract-text{font-size:13px;line-height:1.75;color:var(--text-muted)}
+  .abstract-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .abstract-btn{background:transparent;border:1px solid var(--border2);border-radius:8px;padding:6px 13px;font-family:var(--font-body);font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;transition:border-color .2s,color .2s,background .2s;display:flex;align-items:center;gap:5px}
+  .abstract-btn:hover{border-color:var(--accent);color:var(--accent2);background:var(--accent-glow)}
+  .abstract-btn.arxiv-btn:hover{border-color:var(--green);color:var(--green);background:rgba(52,211,153,.07)}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
+  .modal-overlay.open{opacity:1;pointer-events:all}
+  .modal-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);width:100%;max-width:680px;max-height:88vh;display:flex;flex-direction:column;position:relative;transform:translateY(24px);transition:transform .3s;overflow:hidden}
+  .modal-overlay.open .modal-box{transform:translateY(0)}
+  .modal-top-bar{height:3px;background:linear-gradient(90deg,var(--accent),#a78bfa,var(--accent))}
+  .modal-header{padding:20px 24px 16px}
+  .modal-badge-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .modal-num-badge{background:var(--accent-glow);border:1px solid rgba(124,106,247,.25);border-radius:4px;padding:2px 9px;font-size:11px;color:var(--accent2);font-family:var(--font-mono);font-weight:600}
+  .modal-year-badge{font-size:11px;color:var(--text-dim);font-family:var(--font-mono)}
+  .modal-title{font-family:var(--font-display);font-size:19px;color:#fff;line-height:1.35;margin-bottom:10px}
+  .modal-authors{font-size:12px;color:var(--text-dim);font-family:var(--font-mono)}
+  .modal-close{position:absolute;top:16px;right:16px;width:30px;height:30px;border-radius:50%;background:var(--surface2);border:1px solid var(--border2);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;transition:background .2s,color .2s,border-color .2s}
+  .modal-close:hover{background:rgba(248,113,113,.1);color:var(--red);border-color:rgba(248,113,113,.3)}
+  .modal-divider{height:1px;background:var(--border);margin:0 24px}
+  .modal-body{padding:20px 24px;overflow-y:auto;flex:1}
+  .modal-abstract-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px}
+  .modal-abstract-text{font-size:14px;line-height:1.85;color:var(--text-muted)}
+  .modal-footer{padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;background:var(--surface)}
+  .modal-btn{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 16px;font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--text);cursor:pointer;transition:border-color .2s,color .2s;display:flex;align-items:center;gap:6px;text-decoration:none}
+  .modal-btn:hover{border-color:var(--accent);color:var(--accent2)}
+  .modal-btn.green:hover{border-color:var(--green);color:var(--green)}
+
+  /* Comparison table */
+  .table-wrapper{overflow-x:auto;margin-bottom:28px;border-radius:var(--radius-lg);border:1px solid var(--border2)}
+  .compare-table{width:100%;border-collapse:collapse;font-size:13px}
+  .compare-table th{background:var(--surface2);color:var(--accent2);font-weight:600;font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:12px 14px;text-align:left;border-bottom:1px solid var(--border2);white-space:nowrap}
+  .compare-table td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top;line-height:1.5}
+  .compare-table tr:last-child td{border-bottom:none}
+  .compare-table tr:hover td{background:var(--surface2)}
+  .compare-table td:first-child{color:var(--accent2);font-weight:500;font-family:var(--font-mono);font-size:12px;min-width:140px}
+  .compare-table td:nth-child(2){color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap}
+  .na-cell{color:var(--text-dim) !important;font-style:italic}
+  .table-loading{display:flex;align-items:center;gap:10px;padding:20px;color:var(--text-muted);font-size:14px}
+
+  /* Review */
+  .review-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:32px;position:relative;overflow:hidden}
+  .review-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.5}
+  .review-content{font-size:15px;line-height:1.8;color:var(--text)}
+  .review-content h2{font-family:var(--font-display);font-size:20px;font-weight:400;color:#fff;margin:24px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .review-content h2:first-child{margin-top:0}
+  .review-content h3{font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--accent2);margin:20px 0 8px}
+  .review-content p{margin-bottom:14px}
+  .review-content strong{color:#fff;font-weight:600}
+  .review-content em{color:var(--accent2);font-style:italic}
+  .citation{display:inline-block;background:var(--accent-glow);border:1px solid rgba(124,106,247,.2);border-radius:4px;padding:0 6px;font-size:12px;font-family:var(--font-mono);color:var(--accent2);vertical-align:middle}
+  .ref-list{margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+  .ref-item{padding:6px 0;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:12px;line-height:1.6;color:var(--text-muted)}
+  .error-card{background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.2);border-radius:var(--radius);padding:16px 18px;color:var(--red);font-size:14px;margin-bottom:20px;display:none}
+  .error-card.visible{display:block}
+  /* Custom papers card */
+  .custom-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);margin-bottom:24px;overflow:hidden}
+  .custom-card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;cursor:pointer;user-select:none;transition:background .2s}
+  .custom-card-header:hover{background:var(--surface2)}
+  .custom-card-title{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--text)}
+  .custom-card-title .badge{background:var(--accent-glow);border:1px solid rgba(124,106,247,.25);border-radius:50px;padding:2px 10px;font-size:11px;color:var(--accent2);font-family:var(--font-mono)}
+  .custom-card-chevron svg{width:14px;height:14px;stroke:var(--text-dim);transition:transform .25s}
+  .custom-card.open .custom-card-chevron svg{transform:rotate(180deg)}
+  .custom-card-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+  .custom-card.open .custom-card-body{max-height:900px}
+  .custom-card-inner{padding:0 22px 22px}
+  .custom-card-tabs{display:flex;gap:6px;margin-bottom:18px;background:var(--bg);border-radius:var(--radius);padding:4px}
+  .ctab{flex:1;padding:8px;border:none;border-radius:9px;font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--text-muted);background:transparent;cursor:pointer;transition:background .2s,color .2s}
+  .ctab.active{background:var(--surface2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+  .ctab-panel{display:none}.ctab-panel.active{display:block}
+  .custom-input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:11px 14px;font-family:var(--font-body);font-size:14px;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;margin-bottom:10px}
+  .custom-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+  .custom-input::placeholder{color:var(--text-dim)}
+  textarea.custom-input{resize:vertical;min-height:72px;font-family:var(--font-body);line-height:1.6}
+  .custom-input-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .btn-add-paper{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 18px;font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--text);cursor:pointer;transition:border-color .2s,color .2s,background .2s;display:flex;align-items:center;gap:7px}
+  .btn-add-paper:hover{border-color:var(--accent);color:var(--accent2);background:var(--accent-glow)}
+  .btn-fetch{background:linear-gradient(135deg,rgba(124,106,247,.2),rgba(91,79,207,.2));border:1px solid rgba(124,106,247,.35);border-radius:var(--radius);padding:10px 18px;font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--accent2);cursor:pointer;transition:opacity .2s;display:flex;align-items:center;gap:7px}
+  .btn-fetch:hover:not(:disabled){opacity:.8}
+  .btn-fetch:disabled{opacity:.45;cursor:not-allowed}
+  .fetch-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+  .fetch-row .custom-input{margin-bottom:0;flex:1}
+  .fetch-status{font-size:12px;margin-top:6px;min-height:18px;transition:color .2s}
+  .fetch-status.ok{color:var(--green)}.fetch-status.err{color:var(--red)}.fetch-status.loading{color:var(--accent2)}
+  /* PDF upload */
+  .pdf-drop-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:28px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;margin-bottom:10px;position:relative}
+  .pdf-drop-zone:hover,.pdf-drop-zone.dragover{border-color:var(--accent);background:var(--accent-glow)}
+  .pdf-drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .pdf-drop-icon{font-size:28px;margin-bottom:8px}
+  .pdf-drop-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+  .pdf-drop-sub{font-size:12px;color:var(--text-dim)}
+  .pdf-queue{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+  .pdf-queue-item{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:flex;align-items:center;gap:10px}
+  .pdf-queue-icon{font-size:18px;flex-shrink:0}
+  .pdf-queue-name{flex:1;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pdf-queue-status{font-size:11px;font-family:var(--font-mono);flex-shrink:0}
+  .pdf-queue-status.pending{color:var(--text-dim)}
+  .pdf-queue-status.uploading{color:var(--accent2)}
+  .pdf-queue-status.done{color:var(--green)}
+  .pdf-queue-status.error{color:var(--red)}
+  .pdf-queue-remove{background:transparent;border:none;color:var(--text-dim);cursor:pointer;padding:2px 6px;border-radius:6px;font-size:14px;line-height:1;transition:color .2s}
+  .pdf-queue-remove:hover{color:var(--red)}
+  .btn-upload-all{background:linear-gradient(135deg,rgba(124,106,247,.25),rgba(91,79,207,.25));border:1px solid rgba(124,106,247,.4);border-radius:var(--radius);padding:10px 18px;font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--accent2);cursor:pointer;transition:opacity .2s;display:flex;align-items:center;gap:7px;width:100%;justify-content:center}
+  .btn-upload-all:hover:not(:disabled){opacity:.8}
+  .btn-upload-all:disabled{opacity:.4;cursor:not-allowed}
+  .pdf-edit-panel{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-top:8px;display:none}
+  .pdf-edit-panel.open{display:block}
+  .pdf-edit-title{font-size:12px;font-weight:600;color:var(--accent2);margin-bottom:10px}
+  .custom-papers-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  .custom-paper-item{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;align-items:flex-start;gap:10px}
+  .custom-paper-item-info{flex:1;min-width:0}
+  .custom-paper-item-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .custom-paper-item-meta{font-size:11px;color:var(--text-dim);font-family:var(--font-mono)}
+  .btn-remove{background:transparent;border:none;color:var(--text-dim);cursor:pointer;padding:2px 6px;border-radius:6px;font-size:15px;line-height:1;transition:color .2s,background .2s;flex-shrink:0}
+  .btn-remove:hover{color:var(--red);background:rgba(248,113,113,.1)}
+  .custom-empty{text-align:center;padding:16px;color:var(--text-dim);font-size:13px}
+  footer{text-align:center;padding:28px 0;font-size:12px;color:var(--text-dim);border-top:1px solid var(--border)}
+  @media(max-width:600px){.options-row{grid-template-columns:1fr}.review-card{padding:20px}}
+</style>
+</head>
+<body>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="container">
+  <header>
+    <div class="logo-badge"><span class="dot"></span> Capstone Project</div>
+    <h1>Automated <em>Literature</em><br>Review System</h1>
+    <p class="subtitle">AI-powered research synthesis — searches ArXiv live, synthesizes reviews with Groq AI.</p>
+  </header>
+
+  <div class="search-card">
+    <div class="groq-notice">
+      ✅ <strong>Groq API is 100% free</strong> — no credit card needed.<br>
+      1. Go to <a href="https://console.groq.com" target="_blank">console.groq.com</a> → Sign up free &nbsp;·&nbsp;
+      2. Click <strong>API Keys → Create API Key</strong> &nbsp;·&nbsp;
+      3. Paste below (starts with <code style="font-family:var(--font-mono)">gsk_...</code>)
+    </div>
+    <div class="field-label">Groq API Key</div>
+    <div class="api-key-row">
+      <input type="password" class="api-key-input" id="apiKey" placeholder="gsk_..." oninput="validateKey(this)"/>
+      <span class="key-status" id="keyStatus"></span>
+    </div>
+    <div class="field-label">Research Topic</div>
+    <div class="search-row">
+      <input type="text" class="search-input" id="topicInput"
+        placeholder="e.g. deepfake detection using deep learning"
+        onkeydown="if(event.key==='Enter') startReview()"/>
+    </div>
+    <div class="options-row">
+      <div class="option-group">
+        <div class="field-label">Domain</div>
+        <select id="domainSelect">
+          <option value="">All domains</option>
+          <option value="cs.AI">Artificial Intelligence</option>
+          <option value="cs.LG">Machine Learning</option>
+          <option value="cs.CV">Computer Vision</option>
+          <option value="cs.CL">Computation & Language</option>
+          <option value="cs.CR">Cryptography & Security</option>
+          <option value="eess.IV">Image & Video Processing</option>
+          <option value="stat.ML">Statistics - ML</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <div class="field-label">Max Papers</div>
+        <select id="maxPapers">
+          <option value="5">5 papers</option>
+          <option value="8" selected>8 papers</option>
+          <option value="12">12 papers</option>
+          <option value="15">15 papers</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <div class="field-label">Review Style</div>
+        <select id="reviewStyle">
+          <option value="comprehensive">Comprehensive</option>
+          <option value="thematic">Thematic</option>
+          <option value="chronological">Chronological</option>
+          <option value="gap-focused">Gap Analysis</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-primary" id="generateBtn" onclick="startReview()">
+      ⚡ Generate Literature Review
+    </button>
+  </div>
+
+  <!-- Custom Papers Card -->
+  <div class="custom-card" id="customCard">
+    <div class="custom-card-header" onclick="toggleCustomCard()">
+      <div class="custom-card-title">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Add Your Own Papers
+        <span class="badge" id="customBadge">0 added</span>
+      </div>
+      <div class="custom-card-chevron">
+        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+    <div class="custom-card-body">
+      <div class="custom-card-inner">
+        <div class="custom-card-tabs">
+          <button class="ctab active" onclick="switchTab('arxiv')">📎 Paste ArXiv URL</button>
+          <button class="ctab" onclick="switchTab('manual')">✏️ Enter Manually</button>
+          <button class="ctab" onclick="switchTab('pdf')">📄 Upload PDF</button>
+        </div>
+
+        <!-- ArXiv URL tab -->
+        <div class="ctab-panel active" id="tab-arxiv">
+          <div class="field-label">ArXiv Paper URL or ID</div>
+          <div class="fetch-row">
+            <input type="text" class="custom-input" id="arxivUrlInput"
+              placeholder="https://arxiv.org/abs/2301.12345  or  2301.12345"
+              onkeydown="if(event.key==='Enter') fetchArxivPaper()"/>
+            <button class="btn-fetch" id="fetchBtn" onclick="fetchArxivPaper()">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Fetch
+            </button>
+          </div>
+          <div class="fetch-status" id="fetchStatus"></div>
+        </div>
+
+        <!-- Manual entry tab -->
+        <div class="ctab-panel" id="tab-manual">
+          <div class="field-label">Paper Title</div>
+          <input type="text" class="custom-input" id="manTitle" placeholder="e.g. Attention Is All You Need"/>
+          <div class="field-label">Authors</div>
+          <input type="text" class="custom-input" id="manAuthors" placeholder="e.g. Vaswani, A., Shazeer, N., Parmar, N."/>
+          <div class="custom-input-row">
+            <div>
+              <div class="field-label">Year</div>
+              <input type="text" class="custom-input" id="manYear" placeholder="e.g. 2017" style="margin-bottom:0"/>
+            </div>
+            <div>
+              <div class="field-label">URL (optional)</div>
+              <input type="text" class="custom-input" id="manUrl" placeholder="https://arxiv.org/abs/..." style="margin-bottom:0"/>
+            </div>
+          </div>
+          <div class="field-label" style="margin-top:10px">Abstract</div>
+          <textarea class="custom-input" id="manAbstract" placeholder="Paste the paper abstract here…"></textarea>
+          <button class="btn-add-paper" onclick="addManualPaper()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Add Paper
+          </button>
+        </div>
+
+        <!-- PDF upload tab -->
+        <div class="ctab-panel" id="tab-pdf">
+          <div class="pdf-drop-zone" id="pdfDropZone"
+            ondragover="event.preventDefault();this.classList.add('dragover')"
+            ondragleave="this.classList.remove('dragover')"
+            ondrop="handlePdfDrop(event)">
+            <input type="file" id="pdfFileInput" accept=".pdf" multiple onchange="handlePdfSelect(this.files)"/>
+            <div class="pdf-drop-icon">📄</div>
+            <div class="pdf-drop-title">Drop PDF files here or click to browse</div>
+            <div class="pdf-drop-sub">Supports multiple PDFs — title, authors &amp; abstract extracted automatically</div>
+          </div>
+          <div class="pdf-queue" id="pdfQueue"></div>
+          <button class="btn-upload-all" id="uploadAllBtn" onclick="uploadAllPdfs()" style="display:none">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Extract &amp; Add All PDFs
+          </button>
+          <div style="font-size:12px;color:var(--text-dim);margin-top:10px;line-height:1.6">
+            💡 After extraction, you can edit the title, authors and abstract before adding to your review.
+          </div>
+        </div>
+
+        <!-- Added papers list -->
+        <div id="customPapersList">
+          <div class="custom-empty" id="customEmpty">No custom papers added yet. Papers you add will be included in the review.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-card" id="errorCard"></div>
+
+  <div class="progress-card" id="progressCard">
+    <div class="progress-header">
+      <div class="spinner"></div>
+      <div class="progress-title">Generating your literature review…</div>
+    </div>
+    <div class="progress-steps">
+      <div class="step-item" id="step1"><div class="step-dot"></div> Searching ArXiv database</div>
+      <div class="step-item" id="step2"><div class="step-dot"></div> Fetching paper metadata</div>
+      <div class="step-item" id="step3"><div class="step-dot"></div> Analyzing abstracts with NLP</div>
+      <div class="step-item" id="step4"><div class="step-dot"></div> Synthesizing review with Groq AI</div>
+      <div class="step-item" id="step5"><div class="step-dot"></div> Building methodology comparison table</div>
+      <div class="step-item" id="step6"><div class="step-dot"></div> Formatting citations and references</div>
+    </div>
+  </div>
+
+  <div class="results-section" id="resultsSection">
+    <div class="results-header">
+      <div class="results-title">Literature Review</div>
+      <div class="export-btns">
+        <button class="btn-export" onclick="exportTxt()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Export .txt
+        </button>
+        <button class="btn-export pdf-btn" onclick="exportPDF()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Export PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="section-label">Papers Retrieved from ArXiv</div>
+    <div class="papers-grid" id="papersGrid"></div>
+
+    <div class="section-label">Methodology Comparison Table</div>
+    <div id="compareSection">
+      <div class="table-loading" id="tableLoading" style="display:none">
+        <div class="spinner"></div> Building comparison table…
+      </div>
+      <div class="table-wrapper" id="tableWrapper" style="display:none">
+        <table class="compare-table" id="compareTable">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:28px">AI-Generated Review</div>
+    <div class="review-card">
+      <div class="review-content" id="reviewContent"></div>
+    </div>
+  </div>
+
+  <!-- Abstract Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-top-bar"></div>
+    <div class="modal-header">
+      <div class="modal-badge-row">
+        <span class="modal-num-badge" id="modal-num"></span>
+        <span class="modal-year-badge" id="modal-year"></span>
+      </div>
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-authors" id="modal-authors"></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-divider"></div>
+    <div class="modal-body">
+      <div class="modal-abstract-label">Abstract</div>
+      <div class="modal-abstract-text" id="modal-abstract"></div>
+    </div>
+    <div class="modal-footer">
+      <a class="modal-btn green" id="modal-arxiv-btn" href="#" target="_blank">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Open on ArXiv
+      </a>
+      <button class="modal-btn" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<footer>LitReview AI &mdash; Capstone Project &mdash; ArXiv + Groq Llama 3.3 &mdash; Run with: python server.py</footer>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+let papersData = [];
+let reviewText = '';
+let tableData  = null;
+let currentTopic = '';
+
+function validateKey(input) {
+  const val = input.value.trim();
+  const status = document.getElementById('keyStatus');
+  if (!val) { input.className='api-key-input'; status.textContent=''; return; }
+  if (val.startsWith('gsk_') && val.length > 20) {
+    input.className='api-key-input valid';
+    status.className='key-status valid'; status.textContent='✓ Looks good';
+  } else {
+    input.className='api-key-input invalid';
+    status.className='key-status invalid'; status.textContent='Should start with gsk_';
+  }
+}
+
+async function startReview() {
+  const topic  = document.getElementById('topicInput').value.trim();
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!topic)  { showError('Please enter a research topic.'); return; }
+  if (!apiKey) { showError('Please enter your Groq API key. Get one free at console.groq.com'); return; }
+  if (!apiKey.startsWith('gsk_')) { showError('Invalid Groq key — should start with gsk_'); return; }
+
+  currentTopic = topic;
+  const maxPapers = document.getElementById('maxPapers').value;
+  const domain    = document.getElementById('domainSelect').value;
+  const style     = document.getElementById('reviewStyle').value;
+
+  clearError(); showProgress(true); showResults(false);
+  tableData = null;
+  document.getElementById('generateBtn').disabled = true;
+
+  try {
+    // Step 1 — ArXiv search
+    setStep(1,'active');
+    const searchResp = await fetch(`${API}/search?topic=${encodeURIComponent(topic)}&domain=${domain}&max=${maxPapers}`);
+    if (!searchResp.ok) throw new Error('Server error on paper search. Is server.py running?');
+    const searchedPapers = await searchResp.json();
+    if (searchedPapers.error) throw new Error(searchedPapers.error);
+    if (!searchedPapers.length && !customPapers.length) throw new Error('No papers found. Try broader search terms or add your own papers.');
+
+    // Merge searched + custom papers, re-number IDs sequentially
+    const allPapers = [...searchedPapers, ...customPapers].map((p, i) => ({...p, id: i+1}));
+    const papers = allPapers;
+    setStep(1,'done');
+
+    // Step 2 — render papers
+    setStep(2,'active');
+    papersData = papers;
+    renderPapers(papers);
+    await sleep(400);
+    setStep(2,'done');
+
+    // Step 3 — NLP analysis
+    setStep(3,'active');
+    await sleep(600);
+    setStep(3,'done');
+
+    // Step 4 — generate review
+    setStep(4,'active');
+    const genResp = await fetch(`${API}/generate`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({api_key:apiKey, papers, topic, style})
+    });
+    const genData = await genResp.json();
+    if (!genResp.ok || genData.error) throw new Error(genData.error || 'Review generation failed.');
+    reviewText = genData.review;
+    setStep(4,'done');
+
+    // Step 5 — comparison table (runs in parallel after review)
+    setStep(5,'active');
+    showResults(true);
+    renderReview(reviewText, papers);
+    document.getElementById('tableLoading').style.display = 'flex';
+    document.getElementById('tableWrapper').style.display = 'none';
+
+    const cmpResp = await fetch(`${API}/compare`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({api_key:apiKey, papers, topic})
+    });
+    const cmpData = await cmpResp.json();
+    document.getElementById('tableLoading').style.display = 'none';
+    if (cmpData.error) {
+      document.getElementById('tableWrapper').innerHTML = `<div style="padding:16px;color:var(--red);font-size:13px">⚠ ${cmpData.error}</div>`;
+      document.getElementById('tableWrapper').style.display = 'block';
+    } else {
+      tableData = cmpData;
+      renderTable(cmpData);
+    }
+    setStep(5,'done');
+
+    // Step 6 — done
+    setStep(6,'active');
+    await sleep(300);
+    setStep(6,'done');
+    showProgress(false);
+    document.getElementById('resultsSection').scrollIntoView({behavior:'smooth'});
+
+  } catch(e) {
+    showProgress(false);
+    const msg = (e.message.includes('fetch') || e.message.includes('Failed'))
+      ? '⚠ Cannot reach server. Make sure server.py is running: open a terminal and run "python server.py"'
+      : e.message;
+    showError(msg);
+  } finally {
+    document.getElementById('generateBtn').disabled = false;
+  }
+}
+
+function renderPapers(papers) {
+  document.getElementById('papersGrid').innerHTML = papers.map(p => `
+    <div class="paper-card" id="card-${p.id}" onclick="toggleAbstract(${p.id})">
+      <div class="paper-card-top">
+        <div class="paper-title">${escHtml(p.title)}</div>
+        <div class="expand-icon">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+      <div class="paper-meta" style="margin-top:6px">
+        <span>👤 ${escHtml(p.authors.slice(0,2).join(', '))}${p.authors.length>2?' et al.':''}</span>
+        <span>📅 ${p.year||'N/A'}</span>
+        <span><span class="tag">[${p.id}]</span></span>
+      </div>
+      <div class="abstract-panel" id="abstract-${p.id}">
+        <div class="abstract-body">
+          <div class="abstract-sublabel">Abstract</div>
+          <div class="abstract-text">${escHtml(p.abstract)}</div>
+          <div class="abstract-actions">
+            <button class="abstract-btn" onclick="event.stopPropagation();openModal(${p.id})">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+              Full view
+            </button>
+            ${p.url ? `<button class="abstract-btn arxiv-btn" onclick="event.stopPropagation();window.open('${escHtml(p.url)}','_blank')">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Open on ArXiv
+            </button>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleAbstract(id) {
+  const card  = document.getElementById('card-' + id);
+  const panel = document.getElementById('abstract-' + id);
+  const isOpen = card.classList.contains('open');
+  card.classList.toggle('open', !isOpen);
+  panel.classList.toggle('open', !isOpen);
+}
+
+function openModal(id) {
+  const p = papersData.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('modal-num').textContent   = '[' + p.id + ']';
+  document.getElementById('modal-year').textContent  = p.year || 'N/A';
+  document.getElementById('modal-title').textContent = p.title;
+  document.getElementById('modal-authors').textContent = p.authors.join(', ') + (p.authors.length ? ' et al.' : '');
+  document.getElementById('modal-abstract').textContent = p.abstract;
+  const arxivBtn = document.getElementById('modal-arxiv-btn');
+  if (p.url) { arxivBtn.href = p.url; arxivBtn.style.display = 'flex'; }
+  else { arxivBtn.style.display = 'none'; }
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderTable(data) {
+  const thead = document.getElementById('tableHead');
+  const tbody = document.getElementById('tableBody');
+  thead.innerHTML = '<tr>' + data.columns.map(c => `<th>${escHtml(c)}</th>`).join('') + '</tr>';
+  tbody.innerHTML = data.rows.map(row =>
+    '<tr>' + data.columns.map(col => {
+      const val = row[col] || 'N/A';
+      const cls = val === 'N/A' ? ' class="na-cell"' : '';
+      return `<td${cls}>${escHtml(val)}</td>`;
+    }).join('') + '</tr>'
+  ).join('');
+  document.getElementById('tableWrapper').style.display = 'block';
+}
+
+function renderReview(text, papers) {
+  const el = document.getElementById('reviewContent');
+  let html = text
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/\[(\d+(?:,\s*\d+)*)\]/g,(m,ids)=>`<span class="citation">[${ids}]</span>`)
+    .split('\n').map(line => {
+      if (line.match(/^<h[23]>/) || line.trim()==='') return line;
+      return `<p>${line}</p>`;
+    }).join('\n');
+  const refs = papers.map(p =>
+    `<div class="ref-item">[${p.id}] ${escHtml(p.authors.join(', '))} (${p.year}). <em>${escHtml(p.title)}</em>. ArXiv: ${escHtml(p.arxivId)}</div>`
+  ).join('');
+  el.innerHTML = `${html}<div class="ref-list"><div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px">References</div>${refs}</div>`;
+}
+
+// ── Export TXT ───────────────────────────────────────────────────
+function exportTxt() {
+  if (!reviewText || !papersData.length) return;
+  let tableSection = '';
+  if (tableData) {
+    const cols = tableData.columns;
+    const rows = tableData.rows;
+    const widths = cols.map((c,i) => Math.max(c.length, ...rows.map(r=>(r[c]||'N/A').length)));
+    const line   = widths.map(w=>'-'.repeat(w+2)).join('+');
+    const header = cols.map((c,i)=>c.padEnd(widths[i])).join(' | ');
+    const body   = rows.map(r => cols.map((c,i)=>(r[c]||'N/A').padEnd(widths[i])).join(' | ')).join('\n');
+    tableSection = `\n${'='.repeat(60)}\nMETHODOLOGY COMPARISON TABLE\n\n${header}\n${line}\n${body}\n`;
+  }
+  const refs = papersData.map(p=>`[${p.id}] ${p.authors.join(', ')} (${p.year}). ${p.title}. ArXiv: ${p.url}`).join('\n');
+  const full = `AUTOMATED LITERATURE REVIEW\nGenerated by LitReview AI\nTopic: ${currentTopic}\n${'='.repeat(60)}\n\n${reviewText}${tableSection}\n${'='.repeat(60)}\nREFERENCES\n\n${refs}`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([full],{type:'text/plain'}));
+  a.download = 'literature_review.txt';
+  a.click();
+}
+
+// ── Export PDF ───────────────────────────────────────────────────
+function exportPDF() {
+  if (!reviewText || !papersData.length) { showError('Generate a review first before exporting PDF.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 18;
+  const usableW = pageW - margin * 2;
+  let y = margin;
+
+  function checkPage(needed) {
+    if (y + needed > pageH - margin) { doc.addPage(); y = margin; }
+  }
+
+  function addText(text, size, style, color, indent) {
+    doc.setFontSize(size);
+    doc.setFont('helvetica', style || 'normal');
+    doc.setTextColor(...(color || [40,40,50]));
+    const lines = doc.splitTextToSize(text, usableW - (indent||0));
+    checkPage(lines.length * size * 0.4 + 4);
+    doc.text(lines, margin + (indent||0), y);
+    y += lines.length * size * 0.42 + 2;
+  }
+
+  // Header
+  doc.setFillColor(15,15,25);
+  doc.rect(0, 0, pageW, 38, 'F');
+  doc.setFontSize(20); doc.setFont('helvetica','bold'); doc.setTextColor(167,139,250);
+  doc.text('LitReview AI', margin, 16);
+  doc.setFontSize(11); doc.setFont('helvetica','normal'); doc.setTextColor(180,180,200);
+  doc.text('Automated Literature Review — Capstone Project', margin, 24);
+  doc.setFontSize(9); doc.setTextColor(100,100,120);
+  doc.text(`Topic: ${currentTopic}   |   Generated: ${new Date().toLocaleDateString()}`, margin, 32);
+  y = 46;
+
+  // Review text sections
+  const lines = reviewText.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) { y += 3; continue; }
+    if (trimmed.startsWith('## ')) {
+      y += 4;
+      checkPage(12);
+      doc.setFillColor(124,106,247,30);
+      doc.setDrawColor(124,106,247);
+      doc.setLineWidth(0.4);
+      doc.line(margin, y, pageW - margin, y);
+      y += 2;
+      addText(trimmed.replace('## ',''), 13, 'bold', [80,60,200]);
+      y += 1;
+    } else if (trimmed.startsWith('### ')) {
+      addText(trimmed.replace('### ',''), 11, 'bold', [124,106,247]);
+    } else {
+      const clean = trimmed.replace(/\*\*(.+?)\*\*/g,'$1').replace(/\*(.+?)\*/g,'$1').replace(/\[(\d+)\]/g,'[$1]');
+      addText(clean, 10, 'normal', [40,40,55]);
+    }
+  }
+
+  // Comparison table
+  if (tableData) {
+    doc.addPage(); y = margin;
+    doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(80,60,200);
+    doc.text('Methodology Comparison Table', margin, y); y += 10;
+
+    doc.autoTable({
+      startY: y,
+      head: [tableData.columns],
+      body: tableData.rows.map(r => tableData.columns.map(c => r[c] || 'N/A')),
+      theme: 'grid',
+      headStyles: { fillColor:[124,106,247], textColor:255, fontStyle:'bold', fontSize:8 },
+      bodyStyles: { fontSize:8, textColor:[40,40,55] },
+      alternateRowStyles: { fillColor:[245,243,255] },
+      columnStyles: { 0:{cellWidth:38}, 1:{cellWidth:14} },
+      margin: { left:margin, right:margin },
+      styles: { overflow:'linebreak', cellPadding:3 }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // References
+  checkPage(20);
+  y += 6;
+  doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.setTextColor(80,60,200);
+  doc.text('References', margin, y); y += 6;
+  for (const p of papersData) {
+    const ref = `[${p.id}] ${p.authors.join(', ')} (${p.year}). ${p.title}. ArXiv: ${p.arxivId}`;
+    addText(ref, 8, 'normal', [80,80,100]);
+  }
+
+  // Footer on all pages
+  const total = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(140,140,160);
+    doc.text(`LitReview AI — Capstone Project`, margin, pageH - 8);
+    doc.text(`Page ${i} of ${total}`, pageW - margin - 18, pageH - 8);
+  }
+
+  doc.save(`literature_review_${currentTopic.replace(/\s+/g,'_').slice(0,30)}.pdf`);
+}
+
+// ── Custom papers ────────────────────────────────────────────────
+let customPapers = [];
+let customIdCounter = 1000;
+
+function toggleCustomCard() {
+  document.getElementById('customCard').classList.toggle('open');
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.ctab').forEach((t,i) => t.classList.toggle('active', ['arxiv','manual'][i]===name));
+  document.querySelectorAll('.ctab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+async function fetchArxivPaper() {
+  const raw = document.getElementById('arxivUrlInput').value.trim();
+  if (!raw) return;
+  const status = document.getElementById('fetchStatus');
+  const btn    = document.getElementById('fetchBtn');
+  btn.disabled = true;
+  status.className = 'fetch-status loading';
+  status.textContent = '⏳ Fetching paper from ArXiv…';
+
+  // Extract ArXiv ID from URL or raw ID
+  let arxivId = raw;
+  const match = raw.match(/arxiv\.org\/(?:abs|pdf)\/([\d.v]+)/i);
+  if (match) arxivId = match[1].replace(/\.pdf$/,'');
+  // Accept plain IDs like 2301.12345 or 2301.12345v2
+  if (!/^\d{4}\.\d{4,5}(v\d+)?$/.test(arxivId)) {
+    status.className='fetch-status err'; status.textContent='⚠ Could not parse ArXiv ID. Use format: 2301.12345';
+    btn.disabled=false; return;
+  }
+
+  try {
+    const resp = await fetch(`http://localhost:5000/fetch_arxiv?id=${encodeURIComponent(arxivId)}`);
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    customIdCounter++;
+    const paper = {...data, id: customIdCounter, custom: true};
+    customPapers.push(paper);
+    renderCustomList();
+    status.className='fetch-status ok';
+    status.textContent=`✓ Added: "${data.title.slice(0,60)}…"`;
+    document.getElementById('arxivUrlInput').value='';
+  } catch(e) {
+    status.className='fetch-status err';
+    status.textContent='⚠ ' + e.message;
+  }
+  btn.disabled=false;
+}
+
+function addManualPaper() {
+  const title    = document.getElementById('manTitle').value.trim();
+  const authorsR = document.getElementById('manAuthors').value.trim();
+  const year     = document.getElementById('manYear').value.trim();
+  const url      = document.getElementById('manUrl').value.trim();
+  const abstract = document.getElementById('manAbstract').value.trim();
+  if (!title) { alert('Please enter a paper title.'); return; }
+  if (!abstract) { alert('Please enter an abstract — it is needed for the AI review.'); return; }
+  customIdCounter++;
+  customPapers.push({
+    id: customIdCounter,
+    title,
+    authors: authorsR ? authorsR.split(',').map(a=>a.trim()) : ['Unknown'],
+    year: year || 'N/A',
+    url,
+    arxivId: '',
+    abstract,
+    custom: true
+  });
+  renderCustomList();
+  // Clear fields
+  ['manTitle','manAuthors','manYear','manUrl','manAbstract'].forEach(id => document.getElementById(id).value='');
+}
+
+function removeCustomPaper(id) {
+  customPapers = customPapers.filter(p => p.id !== id);
+  renderCustomList();
+}
+
+function renderCustomList() {
+  const list  = document.getElementById('customPapersList');
+  const badge = document.getElementById('customBadge');
+  badge.textContent = customPapers.length + ' added';
+  if (!customPapers.length) {
+    list.innerHTML = '<div class="custom-empty" id="customEmpty">No custom papers added yet. Papers you add will be included in the review.</div>';
+    return;
+  }
+  list.innerHTML = `<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;margin-top:4px">Added Papers</div>
+    <div class="custom-papers-list">` +
+    customPapers.map(p => `
+      <div class="custom-paper-item">
+        <div class="custom-paper-item-info">
+          <div class="custom-paper-item-title">${escHtml(p.title)}</div>
+          <div class="custom-paper-item-meta">
+            ${escHtml(p.authors.slice(0,2).join(', '))}${p.authors.length>2?' et al.':''} · ${p.year}
+            ${p.custom?'<span style="color:var(--accent2);margin-left:6px">✦ custom</span>':''}
+            ${p.fromPdf?'<span style="color:var(--amber);margin-left:4px">📄 PDF</span>':''}
+          </div>
+        </div>
+        <button class="btn-remove" onclick="removeCustomPaper(${p.id})" title="Remove">✕</button>
+      </div>`).join('') + '</div>';
+}
+
+// ── PDF upload ────────────────────────────────────────────────────
+let pdfQueue = []; // [{file, status:'pending'|'uploading'|'done'|'error', result, msg}]
+
+function handlePdfDrop(e) {
+  e.preventDefault();
+  document.getElementById('pdfDropZone').classList.remove('dragover');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
+  if (!files.length) return;
+  addToPdfQueue(files);
+}
+
+function handlePdfSelect(files) {
+  addToPdfQueue(Array.from(files));
+  document.getElementById('pdfFileInput').value = '';
+}
+
+function addToPdfQueue(files) {
+  files.forEach(f => pdfQueue.push({ file: f, status: 'pending', result: null, msg: 'Ready to extract' }));
+  renderPdfQueue();
+  document.getElementById('uploadAllBtn').style.display = pdfQueue.length ? 'flex' : 'none';
+}
+
+function removePdfFromQueue(idx) {
+  pdfQueue.splice(idx, 1);
+  renderPdfQueue();
+  document.getElementById('uploadAllBtn').style.display = pdfQueue.length ? 'flex' : 'none';
+}
+
+function renderPdfQueue() {
+  const el = document.getElementById('pdfQueue');
+  if (!pdfQueue.length) { el.innerHTML = ''; return; }
+  el.innerHTML = pdfQueue.map((item, i) => `
+    <div class="pdf-queue-item">
+      <span class="pdf-queue-icon">📄</span>
+      <span class="pdf-queue-name" title="${escHtml(item.file.name)}">${escHtml(item.file.name)}</span>
+      <span class="pdf-queue-status ${item.status}">${escHtml(item.msg)}</span>
+      ${item.status !== 'uploading'
+        ? `<button class="pdf-queue-remove" onclick="removePdfFromQueue(${i})">✕</button>`
+        : '<span style="font-size:12px;color:var(--accent2)">⏳</span>'}
+    </div>
+    ${item.status === 'done' && item.result ? renderPdfEditPanel(item, i) : ''}`
+  ).join('');
+}
+
+function renderPdfEditPanel(item, idx) {
+  const r = item.result;
+  return `<div class="pdf-edit-panel open" id="pdf-edit-${idx}">
+    <div class="pdf-edit-title">✏️ Review extracted data — edit before adding</div>
+    <div class="field-label">Title</div>
+    <input type="text" class="custom-input" id="pdf-title-${idx}" value="${escHtml(r.title)}" style="margin-bottom:10px"/>
+    <div class="field-label">Authors <span style="font-weight:400;color:var(--text-dim)">(comma separated)</span></div>
+    <input type="text" class="custom-input" id="pdf-authors-${idx}" value="${escHtml((r.authors||[]).join(', '))}" placeholder="Author 1, Author 2…" style="margin-bottom:10px"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <div class="field-label">Year</div>
+        <input type="text" class="custom-input" id="pdf-year-${idx}" value="${escHtml(r.year||'')}" placeholder="2024" style="margin-bottom:0"/>
+      </div>
+      <div>
+        <div class="field-label">URL (optional)</div>
+        <input type="text" class="custom-input" id="pdf-url-${idx}" value="${escHtml(r.url||'')}" placeholder="https://…" style="margin-bottom:0"/>
+      </div>
+    </div>
+    <div class="field-label">Abstract</div>
+    <textarea class="custom-input" id="pdf-abstract-${idx}" rows="4">${escHtml(r.abstract)}</textarea>
+    <button class="btn-add-paper" onclick="confirmAddPdf(${idx})" style="margin-top:4px">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      Add This Paper to Review
+    </button>
+  </div>`;
+}
+
+async function uploadAllPdfs() {
+  const pending = pdfQueue.filter(item => item.status === 'pending');
+  if (!pending.length) return;
+  document.getElementById('uploadAllBtn').disabled = true;
+
+  for (let i = 0; i < pdfQueue.length; i++) {
+    const item = pdfQueue[i];
+    if (item.status !== 'pending') continue;
+
+    item.status = 'uploading'; item.msg = 'Extracting…';
+    renderPdfQueue();
+
+    const formData = new FormData();
+    formData.append('pdf', item.file);
+
+    try {
+      const resp = await fetch('http://localhost:5000/upload_pdf', { method: 'POST', body: formData });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || 'Extraction failed');
+      item.status = 'done'; item.msg = '✓ Extracted'; item.result = data;
+    } catch(e) {
+      item.status = 'error'; item.msg = '⚠ ' + e.message;
+    }
+    renderPdfQueue();
+  }
+  document.getElementById('uploadAllBtn').disabled = false;
+}
+
+function confirmAddPdf(idx) {
+  const item = pdfQueue[idx];
+  if (!item || !item.result) return;
+
+  const title    = document.getElementById(`pdf-title-${idx}`).value.trim();
+  const authorsR = document.getElementById(`pdf-authors-${idx}`).value.trim();
+  const year     = document.getElementById(`pdf-year-${idx}`).value.trim();
+  const url      = document.getElementById(`pdf-url-${idx}`).value.trim();
+  const abstract = document.getElementById(`pdf-abstract-${idx}`).value.trim();
+
+  if (!title)    { alert('Please enter a title.'); return; }
+  if (!abstract) { alert('Abstract is required for the AI review.'); return; }
+
+  customIdCounter++;
+  customPapers.push({
+    id:       customIdCounter,
+    title,
+    authors:  authorsR ? authorsR.split(',').map(a => a.trim()).filter(Boolean) : ['Unknown'],
+    year:     year || 'N/A',
+    url,
+    arxivId:  '',
+    abstract,
+    full_text: item.result.full_text || abstract,
+    custom:   true,
+    fromPdf:  true
+  });
+  renderCustomList();
+
+  // Remove from queue
+  pdfQueue.splice(idx, 1);
+  renderPdfQueue();
+  document.getElementById('uploadAllBtn').style.display = pdfQueue.length ? 'flex' : 'none';
+}
+
+function setStep(n,s){const e=document.getElementById(`step${n}`);if(e)e.className=`step-item ${s}`}
+function showProgress(v){document.getElementById('progressCard').className=`progress-card${v?' visible':''}`}
+function showResults(v){document.getElementById('resultsSection').className=`results-section${v?' visible':''}`}
+function showError(msg){const e=document.getElementById('errorCard');e.textContent=msg;e.className='error-card visible';window.scrollTo({top:0,behavior:'smooth'})}
+function clearError(){document.getElementById('errorCard').className='error-card'}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+</script>
+</body>
+</html>
